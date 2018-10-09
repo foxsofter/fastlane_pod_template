@@ -1,0 +1,47 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+
+update_fastlane
+
+default_platform(:ios)
+
+lane :release_pod do |options|
+  pod_name = options[:pod_name]
+  # 确认是 master 分支
+  ensure_git_branch
+  # git pull tags
+  git_pull(only_tags: true)
+  # 读取podspec中的版本
+  spec_path = "./#{pod_name}.podspec"
+  spec = read_podspec(path: spec_path)
+  spec_version = spec["version"]
+
+  # 检查对于 tag 是否已经存在
+  if !git_tag_exists(tag: spec_version)
+    # 添加 tag
+    add_git_tag(tag: spec_version)
+    # 提交 tag
+    push_git_tags
+  end
+
+  jsource = "http://192.168.30.105/iOS/Specs.git"
+  osource = "https://github.com/CocoaPods/Specs.git"
+  # 验证 spec 文件
+  pod_lib_lint(sources: [jsource,osource], allow_warnings: true, verbose: true)
+  # pod push
+  pod_push(path: spec_path, repo: "30-ios-specs", sources: [jsource,osource], allow_warnings: true, verbose: true)
+
+  #clear_derived_data
+  
+end
